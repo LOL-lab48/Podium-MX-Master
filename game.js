@@ -5,7 +5,9 @@ let player = {
     stamina: 100,
     confidence: 50,
     money: 1000,
-    reputation: 50
+    reputation: 50,
+    injured: false,
+    injuryDays: 0
 };
 
 function updateUI() {
@@ -25,26 +27,42 @@ function log(msg) {
 
 function nextDay() {
     player.day++;
-    checkCareerProgression();
+
+    if (player.injured) {
+        player.injuryDays--;
+        if (player.injuryDays <= 0) {
+            player.injured = false;
+            log("💪 You recovered from your injury.");
+        } else {
+            log("🏥 Still injured (" + player.injuryDays + " days left)");
+        }
+    }
+
+    checkCareer();
 }
 
-function checkCareerProgression() {
+function checkCareer() {
     if (player.skill > 120 && player.level === "Amateur") {
         player.level = "National";
-        log("🏆 You moved up to NATIONAL level!");
+        log("🏆 You advanced to NATIONAL level!");
     }
     if (player.skill > 200 && player.level === "National") {
         player.level = "Pro";
-        log("🔥 You're now a PROFESSIONAL rider!");
+        log("🔥 You are now a PRO rider!");
     }
 }
 
 function train() {
-    player.skill += Math.random() * 4;
+    if (player.injured) {
+        log("❌ You can't train while injured.");
+        return;
+    }
+
+    player.skill += Math.random() * 5;
     player.stamina -= 15;
     player.confidence += 2;
 
-    log("🏋️ You trained hard and improved your skills.");
+    log("🏋️ You trained hard.");
 
     nextDay();
     updateUI();
@@ -52,23 +70,28 @@ function train() {
 
 function rest() {
     player.stamina += 25;
-    player.confidence -= 2;
-
     if (player.stamina > 100) player.stamina = 100;
 
-    log("😴 You rested and recovered stamina.");
+    player.confidence -= 2;
+
+    log("😴 You rested.");
 
     nextDay();
     updateUI();
 }
 
 function race() {
-    if (player.stamina < 30) {
-        log("❌ Too exhausted to race.");
+    if (player.injured) {
+        log("❌ You're injured and can't race.");
         return;
     }
 
-    let strategy = prompt("Choose strategy: aggressive / balanced / safe");
+    if (player.stamina < 30) {
+        log("❌ Too tired to race.");
+        return;
+    }
+
+    let strategy = prompt("Strategy: aggressive / balanced / safe");
 
     let risk = 1;
     let crashChance = 0.2;
@@ -81,62 +104,49 @@ function race() {
         crashChance = 0.1;
     }
 
-    let trackDifficulty = Math.random();
-    let trackName = "";
-
-    if (trackDifficulty < 0.33) {
-        trackName = "Easy Track";
-    } else if (trackDifficulty < 0.66) {
-        trackName = "Technical Track";
-        crashChance += 0.05;
-    } else {
-        trackName = "Mud Track";
-        crashChance += 0.1;
-    }
-
-    log("🏁 Racing on: " + trackName);
-
-    let form = Math.random() * 20;
-
     let performance =
         (player.skill * risk) +
-        form +
         player.confidence +
-        (player.stamina * 0.3);
+        (player.stamina * 0.3) +
+        (Math.random() * 20);
 
     if (Math.random() < crashChance) {
-        log("💥 You crashed!");
-        player.confidence -= 15;
-        player.stamina -= 25;
-        player.reputation -= 5;
+        log("💥 You CRASHED!");
 
-        log("🗞️ Media: 'He’s making too many mistakes.'");
+        player.confidence -= 15;
+        player.stamina -= 20;
+        player.reputation -= 10;
+
+        if (Math.random() < 0.5) {
+            player.injured = true;
+            player.injuryDays = 2 + Math.floor(Math.random() * 3);
+            log("🏥 You're injured for " + player.injuryDays + " days!");
+        }
+
+        log("🗞️ Media: 'Too aggressive and reckless.'");
     } else {
         if (performance > 140) {
-            log("🥇 You WON the race!");
+            log("🥇 You WON!");
             player.money += 600;
-            player.confidence += 12;
             player.reputation += 10;
+            player.confidence += 10;
         } else if (performance > 110) {
-            log("🥈 Great result!");
+            log("🥈 Strong finish.");
             player.money += 300;
-            player.confidence += 6;
             player.reputation += 5;
         } else {
-            log("😐 Average performance.");
-            player.confidence -= 3;
+            log("😐 Mid-pack.");
             player.reputation -= 2;
         }
     }
 
-    // criticism system
     if (player.reputation < 30) {
-        log("🗞️ Media: 'Fans are losing faith.'");
+        log("🗞️ Fans are losing trust.");
     } else if (player.reputation > 80) {
-        log("🗞️ Media: 'A future champion is rising.'");
+        log("🗞️ You're becoming a star!");
     }
 
-    player.stamina -= 35;
+    player.stamina -= 30;
 
     nextDay();
     updateUI();
